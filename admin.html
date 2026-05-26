@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ADMIN PANEL | SISTEM KU</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script>
+tailwind.config = {theme:{extend:{colors:{dark:'#0F172A',card:'#1E293B',accent:'#F43F5E',primary:'#6366F1'}}}}};
+
+// ⚠️ NANTI DIUBAH SETELAH UPLOAD KE GITHUB
+const SETTING = {
+  LINK_DATA_JSON: "https://ISI_LINK_RAW_KAMU_DI_SINI", // GANTI LINK RAW data-utama.json
+  SANDI_ADMIN: "masuk12345" // 👉 GANTI SANDI KAMU SENDIRI, BEBAS
+};
+
+let DB = {};
+
+async function ambilData(){
+  try {
+    let res = await fetch(SETTING.LINK_DATA_JSON);
+    DB = await res.json();
+    tampilkanSemua();
+  } catch(e) { alert("❌ Gagal ambil data! Cek link JSON"); }
+}
+
+function simpanData(){
+  let a = document.createElement("a");
+  let file = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  a.href = URL.createObjectURL(file);
+  a.download = 'data-utama.json';
+  a.click();
+  alert("✅ File terdownload! UPLOAD KE GITHUB GANTI YANG LAMA!");
+}
+
+function masukAdmin(){
+  if(document.getElementById('pw').value === SETTING.SANDI_ADMIN){
+    document.getElementById('hal-login').classList.add('hidden');
+    document.getElementById('hal-dash').classList.remove('hidden');
+    ambilData();
+  } else alert("❌ Sandi Salah!");
+}
+
+function tambahAkun(){
+  let akunBaru = {
+    email: document.getElementById('em').value,
+    sandi: document.getElementById('sd').value,
+    berlakuSampai: document.getElementById('tgl').value,
+    sisaAmbil: parseInt(document.getElementById('lm').value)
+  };
+  DB.AKUN_PENGGUNA.push(akunBaru);
+  simpanData();
+  tampilkanSemua();
+  document.getElementById('formAkun').reset();
+}
+
+function tambahData(){
+  let isi = document.getElementById('isiData').value;
+  if(isi.trim() !== ""){
+    DB.DATA_KOLEKSI.push(isi);
+    simpanData();
+    document.getElementById('isiData').value = "";
+    tampilkanSemua();
+  }
+}
+
+function tampilkanSemua(){
+  document.getElementById('jmlData').innerText = DB.DATA_KOLEKSI.length;
+  document.getElementById('jmlAkun').innerText = DB.AKUN_PENGGUNA.length;
+
+  let listData = document.getElementById('listData'); listData.innerHTML = "";
+  DB.DATA_KOLEKSI.forEach((d,i)=>{
+    listData.innerHTML += `<div class="bg-dark p-2 rounded mb-1 text-sm">${i+1}. ${d}</div>`;
+  });
+
+  let listAkun = document.getElementById('listAkun'); listAkun.innerHTML = "";
+  DB.AKUN_PENGGUNA.forEach((a,i)=>{
+    listAkun.innerHTML += `<div class="bg-dark p-2 rounded mb-1 text-sm">
+      ${a.email} | Sisa: ${a.sisaAmbil} | Sampai: ${a.berlakuSampai.replace('T',' ')}
+      <button onclick="hapusAkun(${i})" class="text-accent float-right">Hapus</button>
+    </div>`;
+  });
+}
+
+function hapusAkun(i){
+  if(confirm("Yakin hapus?")){ DB.AKUN_PENGGUNA.splice(i,1); simpanData(); tampilkanSemua(); }
+}
+</script>
+</head>
+<body class="bg-dark text-white min-h-screen p-4">
+
+<div id="hal-login" class="max-w-md mx-auto mt-20 bg-card p-6 rounded-2xl shadow-xl text-center">
+  <i class="fa fa-lock text-accent text-5xl mb-4"></i>
+  <h2 class="text-xl font-bold mb-4">MASUK ADMIN</h2>
+  <input id="pw" type="password" placeholder="Masukkan Sandi" class="w-full bg-dark border border-slate-700 rounded-xl py-3 px-4 mb-4">
+  <button onclick="masukAdmin()" class="w-full bg-accent py-3 rounded-xl font-bold">MASUK</button>
+</div>
+
+<div id="hal-dash" class="hidden">
+  <h1 class="text-2xl font-bold text-center text-accent mb-6">PANEL ADMIN</h1>
+
+  <div class="grid grid-cols-2 gap-3 mb-6">
+    <div class="bg-card p-4 rounded-xl text-center"><p class="text-sm text-slate-400">Jumlah Data</p><p id="jmlData" class="text-2xl font-bold text-primary">0</p></div>
+    <div class="bg-card p-4 rounded-xl text-center"><p class="text-sm text-slate-400">Total Akun</p><p id="jmlAkun" class="text-2xl font-bold text-accent">0</p></div>
+  </div>
+
+  <div class="bg-card p-4 rounded-xl mb-6">
+    <h3 class="font-bold mb-3">➕ TAMBAH DATA BARU</h3>
+    <textarea id="isiData" placeholder="Tulis isi data di sini..." class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2 h-20"></textarea>
+    <button onclick="tambahData()" class="w-full bg-primary/20 text-primary py-2 rounded-lg">SIMPAN DATA</button>
+  </div>
+
+  <div class="bg-card p-4 rounded-xl mb-6">
+    <h3 class="font-bold mb-3">👤 TAMBAH AKUN PENGGUNA</h3>
+    <div id="formAkun">
+      <input id="em" type="email" placeholder="Email Akun" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
+      <input id="sd" type="text" placeholder="Kode Sandi" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
+      <input id="tgl" type="datetime-local" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
+      <input id="lm" type="number" placeholder="Limit Ambil" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
+      <button onclick="tambahAkun()" class="w-full bg-accent/20 text-accent py-2 rounded-lg">SIMPAN AKUN</button>
+    </div>
+  </div>
+
+  <div class="bg-card p-4 rounded-xl mb-6">
+    <h3 class="font-bold mb-3">📋 DAFTAR DATA</h3>
+    <div id="listData" class="max-h-[200px] overflow-y-auto text-sm"></div>
+  </div>
+
+  <div class="bg-card p-4 rounded-xl">
+    <h3 class="font-bold mb-3">📋 DAFTAR AKUN</h3>
+    <div id="listAkun" class="text-sm"></div>
+  </div>
+
+</div>
+
+</body>
+</html>

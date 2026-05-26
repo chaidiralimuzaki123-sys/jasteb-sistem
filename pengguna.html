@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AKSES MEMBER | SISTEM KU</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<script>
+tailwind.config = {theme:{extend:{colors:{dark:'#0F172A',card:'#1E293B',primary:'#6366F1',secondary:'#818CF8'}}}}};
+
+// ⚠️ NANTI SEMUA BAGIAN INI DIUBAH
+const SETTING = {
+  LINK_DATA_JSON: "https://ISI_LINK_RAW_KAMU_DI_SINI", // LINK RAW data-utama.json
+  EMAILJS_USER: "ISI_USER_ID_KAMU", // DAPAT DARI EMAILJS.COM
+  EMAILJS_TEMPLATE: "ISI_TEMPLATE_ID_KAMU" // DAPAT DARI EMAILJS.COM
+};
+emailjs.init(SETTING.EMAILJS_USER);
+
+let DB = {};
+let akunSaya = null;
+
+async function ambilData(){
+  try {
+    let res = await fetch(SETTING.LINK_DATA_JSON);
+    DB = await res.json();
+  } catch(e) { alert("❌ Sistem sedang gangguan!"); }
+}
+
+async function masukAkun(){
+  let em = document.getElementById('em').value;
+  let sd = document.getElementById('sd').value;
+  await ambilData();
+  
+  let cari = DB.AKUN_PENGGUNA.find(a=> 
+    a.email === em && 
+    a.sandi === sd && 
+    new Date(a.berlakuSampai) > new Date()
+  );
+
+  if(cari){
+    akunSaya = cari;
+    document.getElementById('hal-login').classList.add('hidden');
+    document.getElementById('hal-dash').classList.remove('hidden');
+    tampilkanInfo();
+  } else alert("❌ Akun salah / sudah kadaluarsa!");
+}
+
+function tampilkanInfo(){
+  document.getElementById('namaAkun').innerText = akunSaya.email;
+  document.getElementById('sisaLimit').innerText = akunSaya.sisaAmbil;
+  document.getElementById('stokData').innerText = DB.DATA_KOLEKSI.length;
+}
+
+async function kirimData(){
+  let tujuan = document.getElementById('emailTujuan').value;
+  let jumlah = parseInt(document.getElementById('jmlAmbil').value);
+
+  if(!tujuan || !jumlah) return alert("❌ Isi semua kolom!");
+  if(jumlah > akunSaya.sisaAmbil) return alert("❌ Sisa limit kurang!");
+  if(jumlah > DB.DATA_KOLEKSI.length) return alert("❌ Stok data tidak cukup!");
+
+  let dataDiambil = DB.DATA_KOLEKSI.splice(0, jumlah);
+
+  let isiPesan = `
+==================================================
+          DATA AKSES | SISTEM KU PREMIUM
+==================================================
+Dikirim Ke: ${tujuan}
+Waktu: ${new Date().toLocaleString('id-ID')}
+Jumlah: ${jumlah} Data
+Sisa Limit Akun: ${akunSaya.sisaAmbil - jumlah}
+--------------------------------------------------
+ISI DATA:
+${dataDiambil.map((d,i)=>`${i+1}. ${d}`).join("\n")}
+==================================================
+© 2026 SISTEM KU - Data Terjamin Asli
+  `;
+
+  try {
+    await emailjs.send(SETTING.EMAILJS_TEMPLATE, {
+      from_name: "SISTEM KU",
+      to_email: tujuan,
+      subject: "DATA AKSES - SISTEM KU PREMIUM",
+      message: isiPesan
+    });
+
+    akunSaya.sisaAmbil -= jumlah;
+    DB.RIWAYAT_KIRIM.unshift({tujuan, jumlah, waktu: new Date().toLocaleString()});
+    
+    alert("✅ BERHASIL DIKIRIM!\nCek Kotak Masuk / Spam");
+    tampilkanInfo();
+    
+    let a = document.createElement("a");
+    let file = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+    a.href = URL.createObjectURL(file);
+    a.download = 'data-utama.json';
+    a.click();
+
+  } catch(e) { alert("❌ Gagal kirim: "+e.text); }
+}
+</script>
+</head>
+<body class="bg-dark text-white min-h-screen p-4">
+
+<div id="hal-login" class="max-w-md mx-auto mt-20 bg-card p-6 rounded-2xl shadow-xl text-center">
+  <i class="fa fa-shield text-primary text-5xl mb-4"></i>
+  <h2 class="text-xl font-bold mb-4">LOGIN MEMBER</h2>
+  <input id="em" type="email" placeholder="Email Akun" class="w-full bg-dark border border-slate-700 rounded-xl py-3 px-4 mb-2">
+  <input id="sd" type="password" placeholder="Kode Sandi" class="w-full bg-dark border border-slate-700 rounded-xl py-3 px-4 mb-4">
+  <button onclick="masukAkun()" class="w-full bg-gradient-to-r from-primary to-secondary py-3 rounded-xl font-bold mt-2">MASUK</button>
+</div>
+
+<div id="hal-dash" class="hidden max-w-md mx-auto">
+  <h1 class="text-2xl font-bold text-center bg-gradient-to-r from-primary to-secondary mb-6">SISTEM KU PREMIUM</h1>
+
+  <div class="grid grid-cols-3 gap-3 mb-6">
+    <div class="bg-card p-3 rounded-xl text-center">
+      <p class="text-xs text-slate-400">Akun</p>
+      <p id="namaAkun" class="font-bold text-sm"></p>
+    </div>
+    <div class="bg-card p-3 rounded-xl text-center">
+      <p class="text-xs text-slate-400">Sisa Limit</p>
+      <p id="sisaLimit" class="font-bold text-sm text-green-400">0</p>
+    </div>
+    <div class="bg-card p-3 rounded-xl text-center">
+      <p class="text-xs text-slate-400">Stok Data</p>
+      <p id="stokData" class="font-bold text-sm text-yellow-400">0</p>
+    </div>
+  </div>
+
+  <div class="bg-card p-4 rounded-xl mb-6">
+    <h3 class="font-bold mb-3">✉️ AMBIL & KIRIM KE EMAIL</h3>
+    <input id="emailTujuan" type="email" placeholder="Masukkan Email Kamu" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
+    <input id="jmlAmbil" type="number" placeholder="Jumlah Data" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-4">
+    <button onclick="kirimData()" class="w-full bg-gradient-to-r from-primary to-secondary py-3 rounded-lg font-bold">📨 KIRIM SEKARANG</button>
+    <p class="text-xs text-center text-slate-400 mt-2">*Cek Spam jika tidak masuk</p>
+  </div>
+
+</div>
+
+</body>
+</html>
