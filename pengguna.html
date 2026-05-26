@@ -3,29 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AKSES MEMBER | SISTEM KU</title>
+<title>AKSES MEMBER OTOMATIS | JASTEB</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
 <script>
 tailwind.config = {theme:{extend:{colors:{dark:'#0F172A',card:'#1E293B',primary:'#6366F1',secondary:'#818CF8'}}}}};
 
-// ⚠️ NANTI SEMUA BAGIAN INI DIUBAH
+// ⚠️ ISI SETTINGAN KAMU DI SINI
 const SETTING = {
-  LINK_DATA_JSON: "https://https://raw.githubusercontent.com/chaidiralimuzaki123-sys/jasteb-sistem/refs/heads/main/data-utama.json", // LINK RAW data-utama.json
-  EMAILJS_USER: "h8mk0KIlbGmnzEeSy", // DAPAT DARI EMAILJS.COM
-  EMAILJS_TEMPLATE: "template_k8uynfc" // DAPAT DARI EMAILJS.COM
+  DB_LINK: "https://jastebdb-default-rtdb.asia-southeast1.firebasedatabase.app/", // 👉 SAMA DENGAN LINK DI ADMIN
+  EMAILJS_USER: "h8mk0KllbGmnzEeSy", // <-- Kode kamu yang udah ada
+  EMAILJS_TEMPLATE: "template_k8uynfc" // <-- Kode template kamu
 };
 emailjs.init(SETTING.EMAILJS_USER);
+
+// Inisialisasi Firebase
+const firebaseConfig = {
+  databaseURL: SETTING.DB_LINK,
+  apiKey: "KOSONG", authDomain: "KOSONG", projectId: "KOSONG", storageBucket: "KOSONG", messagingSenderId: "KOSONG", appId: "KOSONG"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 let DB = {};
 let akunSaya = null;
 
+// Ambil data OTOMATIS
 async function ambilData(){
-  try {
-    let res = await fetch(SETTING.LINK_DATA_JSON);
-    DB = await res.json();
-  } catch(e) { alert("❌ Sistem sedang gangguan!"); }
+  const snapshot = await db.ref('/').once('value');
+  DB = snapshot.val() || { DATA_KOLEKSI: [], AKUN_PENGGUNA: [], RIWAYAT_KIRIM: [] };
 }
 
 async function masukAkun(){
@@ -61,7 +72,14 @@ async function kirimData(){
   if(jumlah > akunSaya.sisaAmbil) return alert("❌ Sisa limit kurang!");
   if(jumlah > DB.DATA_KOLEKSI.length) return alert("❌ Stok data tidak cukup!");
 
+  // Ambil data
   let dataDiambil = DB.DATA_KOLEKSI.splice(0, jumlah);
+  akunSaya.sisaAmbil -= jumlah;
+
+  // Simpan perubahan OTOMATIS ke database
+  DB.AKUN_PENGGUNA = DB.AKUN_PENGGUNA.map(a => a.email === akunSaya.email ? akunSaya : a);
+  DB.RIWAYAT_KIRIM.unshift({tujuan, jumlah, waktu: new Date().toLocaleString('id-ID')});
+  await db.ref('/').set(DB); // <-- Data berubah langsung di server
 
   let isiPesan = `
 ==================================================
@@ -70,7 +88,7 @@ async function kirimData(){
 Dikirim Ke: ${tujuan}
 Waktu: ${new Date().toLocaleString('id-ID')}
 Jumlah: ${jumlah} Data
-Sisa Limit Akun: ${akunSaya.sisaAmbil - jumlah}
+Sisa Limit Akun: ${akunSaya.sisaAmbil}
 --------------------------------------------------
 ISI DATA:
 ${dataDiambil.map((d,i)=>`${i+1}. ${d}`).join("\n")}
@@ -85,19 +103,8 @@ ${dataDiambil.map((d,i)=>`${i+1}. ${d}`).join("\n")}
       subject: "DATA AKSES - SISTEM KU PREMIUM",
       message: isiPesan
     });
-
-    akunSaya.sisaAmbil -= jumlah;
-    DB.RIWAYAT_KIRIM.unshift({tujuan, jumlah, waktu: new Date().toLocaleString()});
-    
-    alert("✅ BERHASIL DIKIRIM!\nCek Kotak Masuk / Spam");
+    alert("✅ BERHASIL DIKIRIM! Data terupdate otomatis!");
     tampilkanInfo();
-    
-    let a = document.createElement("a");
-    let file = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
-    a.href = URL.createObjectURL(file);
-    a.download = 'data-utama.json';
-    a.click();
-
   } catch(e) { alert("❌ Gagal kirim: "+e.text); }
 }
 </script>
@@ -134,7 +141,7 @@ ${dataDiambil.map((d,i)=>`${i+1}. ${d}`).join("\n")}
     <h3 class="font-bold mb-3">✉️ AMBIL & KIRIM KE EMAIL</h3>
     <input id="emailTujuan" type="email" placeholder="Masukkan Email Kamu" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
     <input id="jmlAmbil" type="number" placeholder="Jumlah Data" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-4">
-    <button onclick="kirimData()" class="w-full bg-gradient-to-r from-primary to-secondary py-3 rounded-lg font-bold">📨 KIRIM SEKARANG</button>
+    <button onclick="kirimData()" class="w-full bg-gradient-to-r from-primary to-secondary py-2 rounded-lg font-bold">📨 KIRIM SEKARANG</button>
     <p class="text-xs text-center text-slate-400 mt-2">*Cek Spam jika tidak masuk</p>
   </div>
 
