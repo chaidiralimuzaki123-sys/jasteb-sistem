@@ -3,35 +3,51 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ADMIN PANEL | SISTEM KU</title>
+<title>ADMIN PANEL OTOMATIS | JASTEB</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+
 <script>
 tailwind.config = {theme:{extend:{colors:{dark:'#0F172A',card:'#1E293B',accent:'#F43F5E',primary:'#6366F1'}}}}};
 
-// ⚠️ NANTI DIUBAH SETELAH UPLOAD KE GITHUB
+// ⚠️ ISI SETTINGAN KAMU DI SINI
 const SETTING = {
-  LINK_DATA_JSON: "https://https://raw.githubusercontent.com/chaidiralimuzaki123-sys/jasteb-sistem/refs/heads/main/data-utama.json", // GANTI LINK RAW data-utama.json
-  SANDI_ADMIN: "Kingjak" // 👉 GANTI SANDI KAMU SENDIRI, BEBAS
+  SANDI_ADMIN: "Kingjak", // Ganti sandi kamu
+  DB_LINK: "https://jastebdb-default-rtdb.asia-southeast1.firebasedatabase.app/" // 👉 GANTI DENGAN LINK FIREBASE KAMU
 };
+
+// Inisialisasi Firebase
+const firebaseConfig = {
+  databaseURL: SETTING.DB_LINK,
+  apiKey: "KOSONG", // Biarin kosong aja
+  authDomain: "KOSONG",
+  projectId: "KOSONG",
+  storageBucket: "KOSONG",
+  messagingSenderId: "KOSONG",
+  appId: "KOSONG"
+};
+const app = firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
 let DB = {};
 
-async function ambilData(){
+// Ambil data OTOMATIS dari database
+async function ambilData() {
   try {
-    let res = await fetch(SETTING.LINK_DATA_JSON);
-    DB = await res.json();
+    const snapshot = await db.ref('/').once('value');
+    DB = snapshot.val() || { DATA_KOLEKSI: [], AKUN_PENGGUNA: [], RIWAYAT_KIRIM: [] };
     tampilkanSemua();
-  } catch(e) { alert("❌ Gagal ambil data! Cek link JSON"); }
+  } catch(e) { alert("❌ Gagal ambil data!"); }
 }
 
-function simpanData(){
-  let a = document.createElement("a");
-  let file = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
-  a.href = URL.createObjectURL(file);
-  a.download = 'data-utama.json';
-  a.click();
-  alert("✅ File terdownload! UPLOAD KE GITHUB GANTI YANG LAMA!");
+// SIMPAN DATA OTOMATIS KE DATABASE (Gak perlu download/upload)
+async function simpanData() {
+  await db.ref('/').set(DB);
+  alert("✅ BERHASIL! Data langsung masuk otomatis!");
+  tampilkanSemua();
 }
 
 function masukAdmin(){
@@ -50,8 +66,7 @@ function tambahAkun(){
     sisaAmbil: parseInt(document.getElementById('lm').value)
   };
   DB.AKUN_PENGGUNA.push(akunBaru);
-  simpanData();
-  tampilkanSemua();
+  simpanData(); // <-- LANGSUNG SIMPAN KE SERVER
   document.getElementById('formAkun').reset();
 }
 
@@ -59,9 +74,8 @@ function tambahData(){
   let isi = document.getElementById('isiData').value;
   if(isi.trim() !== ""){
     DB.DATA_KOLEKSI.push(isi);
-    simpanData();
+    simpanData(); // <-- LANGSUNG MASUK, GAK PERLU APA-APA LAGI
     document.getElementById('isiData').value = "";
-    tampilkanSemua();
   }
 }
 
@@ -84,7 +98,10 @@ function tampilkanSemua(){
 }
 
 function hapusAkun(i){
-  if(confirm("Yakin hapus?")){ DB.AKUN_PENGGUNA.splice(i,1); simpanData(); tampilkanSemua(); }
+  if(confirm("Yakin hapus?")){ 
+    DB.AKUN_PENGGUNA.splice(i,1); 
+    simpanData();
+  }
 }
 </script>
 </head>
@@ -98,7 +115,7 @@ function hapusAkun(i){
 </div>
 
 <div id="hal-dash" class="hidden">
-  <h1 class="text-2xl font-bold text-center text-accent mb-6">PANEL ADMIN</h1>
+  <h1 class="text-2xl font-bold text-center text-accent mb-6">PANEL ADMIN OTOMATIS</h1>
 
   <div class="grid grid-cols-2 gap-3 mb-6">
     <div class="bg-card p-4 rounded-xl text-center"><p class="text-sm text-slate-400">Jumlah Data</p><p id="jmlData" class="text-2xl font-bold text-primary">0</p></div>
@@ -106,13 +123,13 @@ function hapusAkun(i){
   </div>
 
   <div class="bg-card p-4 rounded-xl mb-6">
-    <h3 class="font-bold mb-3">➕ TAMBAH DATA BARU</h3>
+    <h3 class="font-bold mb-3">➕ TAMBAH DATA BARU (Langsung Masuk)</h3>
     <textarea id="isiData" placeholder="Tulis isi data di sini..." class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2 h-20"></textarea>
-    <button onclick="tambahData()" class="w-full bg-primary/20 text-primary py-2 rounded-lg">SIMPAN DATA</button>
+    <button onclick="tambahData()" class="w-full bg-primary/20 text-primary py-2 rounded-lg">SIMPAN LANGSUNG</button>
   </div>
 
   <div class="bg-card p-4 rounded-xl mb-6">
-    <h3 class="font-bold mb-3">👤 TAMBAH AKUN PENGGUNA</h3>
+    <h3 class="font-bold mb-3">👤 TAMBAH AKUN PENGGUNA (Langsung Masuk)</h3>
     <div id="formAkun">
       <input id="em" type="email" placeholder="Email Akun" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
       <input id="sd" type="text" placeholder="Kode Sandi" class="w-full bg-dark border border-slate-700 rounded-lg py-2 px-3 mb-2">
@@ -135,4 +152,5 @@ function hapusAkun(i){
 </div>
 
 </body>
-                                                      </html>
+      </html>
+        
